@@ -59,6 +59,8 @@ class myHandler(BaseHTTPRequestHandler):
                     color = "white"
                 elif (parser_type == "3RR0R"):
                     color = "red"
+                elif (parser_type == "SL33P"):
+                    color = "green"
                 else:
                     color = "green"
 

